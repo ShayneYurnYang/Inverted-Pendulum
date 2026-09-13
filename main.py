@@ -17,9 +17,25 @@ def main():
     while running:
         dt = clock.tick(config.FPS) / 1000.0
 
+        # Event handling (Keyboard inputs & Quit)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.KEYDOWN:
+                # Left arrow key: Kick angular velocity
+                if event.key == pygame.K_LEFT:
+                    state[3] -= 10.0
+                # Right arrow key: Kick angular velocity
+                elif event.key == pygame.K_RIGHT:
+                    state[3] += 10.0
+                # 'R' key: Reset state
+                # Arrow keys still work if you want cart kicks too:
+                elif event.key == pygame.K_a:
+                    state[1] -= 5.0  # Linear velocity x_dot kick
+                elif event.key == pygame.K_d:
+                    state[1] += 5.0
+                elif event.key == pygame.K_r:
+                    state = list(config.INITIAL_STATE)
 
         # 1. Compute control force
         force_u = compute_control_force(state)

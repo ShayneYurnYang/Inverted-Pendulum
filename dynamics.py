@@ -1,3 +1,5 @@
+# dynamics.py
+
 import numpy as np
 from scipy.integrate import solve_ivp
 import config
@@ -25,10 +27,19 @@ def pendulum_dynamics(t, state, force_u=0.0):
 def step_physics(state, dt, force_u=0.0):
     if dt <= 0:
         return state
+
     sol = solve_ivp(
         fun=lambda t, y: pendulum_dynamics(t, y, force_u),
         t_span=(0, dt),
         y0=state,
         method="RK45",
     )
-    return sol.y[:, -1]
+    
+    # Extract calculated end state
+    new_state = sol.y[:, -1]
+
+    # Clip velocities to maximum limits
+    new_state[1] = np.clip(new_state[1], -config.MAX_CART_VELOCITY, config.MAX_CART_VELOCITY)
+    new_state[3] = np.clip(new_state[3], -config.MAX_POLE_VELOCITY, config.MAX_POLE_VELOCITY)
+
+    return new_state
