@@ -1,9 +1,13 @@
 import sys
+from collections import deque
+
 import numpy as np
 import pygame
+
 import config
-from dynamics import step_physics
 from controller import compute_control_force
+from dynamics import step_physics
+
 
 def main():
     pygame.init()
@@ -12,68 +16,82 @@ def main():
     clock = pygame.time.Clock()
 
     state = list(config.INITIAL_STATE)
+
+    # Keep a history for delayed measurements.
+    delay_frames = int(getattr(config, "LATENCY_SEC", 0.0) * config.FPS)
+    buffer_len = max(1, delay_frames)
+    state_history = deque([list(state)] * buffer_len, maxlen=buffer_len)
+
     running = True
 
     while running:
         dt = clock.tick(config.FPS) / 1000.0
 
-        # Event handling (Keyboard inputs & Quit)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                # Left arrow key: Kick angular velocity
                 if event.key == pygame.K_LEFT:
-                    state[3] -= 10.0
-                # Right arrow key: Kick angular velocity
+                    state[3] -= 1.0
                 elif event.key == pygame.K_RIGHT:
-                    state[3] += 10.0
-                # 'R' key: Reset state
-                # Arrow keys still work if you want cart kicks too:
+                    state[3] += 1.0
+
+                elif event.key == pygame.K_w or event.key == pygame.K_UP:
+                    state[5] -= 1.5
+                elif event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                    state[5] += 1.5
+
                 elif event.key == pygame.K_a:
-                    state[1] -= 5.0  # Linear velocity x_dot kick
+                    state[1] -= 0.5
                 elif event.key == pygame.K_d:
-                    state[1] += 5.0
+                    state[1] += 0.5
+
                 elif event.key == pygame.K_r:
                     state = list(config.INITIAL_STATE)
+                    state_history = deque([list(state)] * buffer_len, maxlen=buffer_len)
+        state_history.append(list(state))
 
-        # 1. Compute control force
-        force_u = compute_control_force(state)
+        # Apply control from the delayed state.
+        delayed_state = state_history[0]
+        force_u = compute_control_force(delayed_state)
 
-        # 2. Integrate physics forward
         state = step_physics(state, dt, force_u)
 
-        x, _, theta, _ = state
-
-        # 3. Calculate screen locations
-        cart_pixel_x = int(config.ORIGIN_X + x * config.SCALE)
+        cart_pixel_x = int(config.ORIGIN_X + state[0] * config.SCALE)
         cart_pixel_y = config.ORIGIN_Y
 
-        pole_pixel_x = int(cart_pixel_x + (config.POLE_LENGTH * config.SCALE) * np.sin(theta))
-        pole_pixel_y = int(cart_pixel_y - (config.POLE_LENGTH * config.SCALE) * np.cos(theta))
+        is_double = len(state) == 6
 
-        # 4. Drawing calls
+        if is_double:
+            x, _, theta1, _, theta2, _ = state
+            p1_x = int(cart_pixel_x + (config.POLE_LEN_1 * config.SCALE) * np.sin(theta1))
+            p1_y = int(cart_pixel_y - (config.POLE_LEN_1 * config.SCALE) * np.cos(theta1))
+            p2_x = int(p1_x + (config.POLE_LEN_2 * config.SCALE) * np.sin(theta2))
+            p2_y = int(p1_y - (config.POLE_LEN_2 * config.SCALE) * np.cos(theta2))
+        else:
+            x, _, theta, _ = state
+            p1_x = int(cart_pixel_x + (config.POLE_LENGTH * config.SCALE) * np.sin(theta))
+            p1_y = int(cart_pixel_y - (config.POLE_LENGTH * config.SCALE) * np.cos(theta))
+
         screen.fill(config.COLOR_BG)
 
-        # Track
         pygame.draw.line(
             screen, config.COLOR_TRACK, 
             (0, config.ORIGIN_Y + 15), (config.WIDTH, config.ORIGIN_Y + 15), 3
         )
 
-        # Cart
         cart_rect = pygame.Rect(0, 0, 80, 30)
         cart_rect.center = (cart_pixel_x, cart_pixel_y)
         pygame.draw.rect(screen, config.COLOR_CART, cart_rect)
 
-        # Pendulum
-        pygame.draw.line(
-            screen, config.COLOR_POLE,
-            (cart_pixel_x, cart_pixel_y), (pole_pixel_x, pole_pixel_y), 6
-        )
-        pygame.draw.circle(
-            screen, config.COLOR_POLE, (pole_pixel_x, pole_pixel_y), 12
-        )
+        if is_double:
+            pygame.draw.line(screen, getattr(config, "COLOR_POLE1", config.COLOR_POLE1), (cart_pixel_x, cart_pixel_y), (p1_x, p1_y), 6)
+            pygame.draw.circle(screen, getattr(config, "COLOR_POLE1", config.COLOR_POLE1), (p1_x, p1_y), 8)
+            pygame.draw.line(screen, getattr(config, "COLOR_POLE2", config.COLOR_POLE2), (p1_x, p1_y), (p2_x, p2_y), 4)
+            pygame.draw.circle(screen, getattr(config, "COLOR_POLE2", config.COLOR_POLE2), (p2_x, p2_y), 6)
+        else:
+            pygame.draw.line(screen, getattr(config, "COLOR_POLE1", config.COLOR_POLE1), (cart_pixel_x, cart_pixel_y), (p1_x, p1_y), 6)
+            pygame.draw.circle(screen, getattr(config, "COLOR_POLE1", config.COLOR_POLE1), (p1_x, p1_y), 12)
 
         pygame.display.flip()
 

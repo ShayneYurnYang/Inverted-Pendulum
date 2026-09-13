@@ -1,28 +1,24 @@
-import numpy as np
-# Physical Limits
-MAX_CART_VELOCITY = 3.0      # m/s
-MAX_POLE_VELOCITY = 10.0     # rad/s (~573 deg/s)
-
-# Physical Parameters
-CART_MASS = 1.0       # kg
-PENDULUM_MASS = 0.1   # kg
-POLE_LENGTH = 0.4     # m
+# Physical parameters.
+CART_MASS = 1.0       # kg (M)
+POLE_MASS_1 = 0.1     # kg (m1)
+POLE_MASS_2 = 0.1     # kg (m2)
+POLE_LEN_1 = 0.4      # m  (l1)
+POLE_LEN_2 = 0.3      # m  (l2)
 GRAVITY = 9.81        # m/s^2
+MAX_FORCE = 200.0  # Maximum motor force in newtons.
 
-# Initial State: [x, x_dot, theta, theta_dot]
-# config.py
+# Initial state: x, x_dot, theta1, theta1_dot, theta2, theta2_dot.
+INITIAL_STATE = [0.0, 0.0, 0.05, 0.0, 0.0, 0.0]
 
-INITIAL_STATE = [0.0, 0.0, np.pi - np.deg2rad(175), 0.0]  # Start at 175 degrees from bottom
-
-# Visual & Rendering Settings
+# Display settings.
 WIDTH, HEIGHT = 800, 600
-SCALE = 150  # 1 meter = 150 pixels (gives ~2.6 meters of track space)
+SCALE = 100
 ORIGIN_X = WIDTH // 2
 ORIGIN_Y = HEIGHT // 2 + 100
 FPS = 60
 
-# Colors (RGB tuples)
 COLOR_BG = (0, 0, 0)
 COLOR_TRACK = (255, 255, 255)
 COLOR_CART = (0, 0, 255)
-COLOR_POLE = (255, 0, 0)    
+COLOR_POLE1 = (255, 0, 0)
+COLOR_POLE2 = (0, 255, 0)
